@@ -80,7 +80,13 @@ func executeCommand(session twitch.Session, args []string) {
 		}
 	case "subscribe":
 		if len(args) > 2 {
-			id := args[1]
+			user, err := session.GetUserInfo(args[1])
+			if err != nil {
+				log.Printf("Error while fetching user info: %s", err)
+				return
+			}
+
+			id := user.ID
 			var lease int
 			if args[2] == "max" {
 				lease = 864000

@@ -197,5 +197,7 @@ func (session Session) SubscribeStream(userID string, lease int) (err error) {
 		return
 	}
 
+	log.Printf("Response status code: %d", res.StatusCode)
+
 	return nil
 }
