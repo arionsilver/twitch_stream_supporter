@@ -13,6 +13,7 @@ import (
 type Config struct {
 	CallbackServer string   `json:"callback_server"`
 	Channels       []string `json:"channels"`
+	Port           string   `json:"port"`
 }
 
 // Session session

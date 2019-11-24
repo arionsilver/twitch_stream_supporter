@@ -83,5 +83,5 @@ func (handler rootHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 func createSimpleHTTPServer(session *discordgo.Session, config twitch.Config) {
 	http.Handle("/", rootHandler{session, config})
-	log.Fatal(http.ListenAndServe(":80", nil))
+	log.Fatal(http.ListenAndServe(config.Port, nil))
 }
