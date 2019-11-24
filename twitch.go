@@ -10,17 +10,30 @@ import (
 	"github.com/arionsilver/twitch_stream_supporter/twitch"
 )
 
-func startTwitchHelper(auth string, q chan bool) (c chan bool) {
+func startTwitchHelper(auth AuthInfo, q chan bool) (c chan bool) {
 	c = make(chan bool)
 	go executeTwitchHelper(auth, c, q)
 
 	return
 }
 
-func executeTwitchHelper(auth string, c chan bool, q chan bool) {
+func executeTwitchHelper(auth AuthInfo, c chan bool, q chan bool) {
 	defer func() { c <- true }()
 
-	session := twitch.NewSession(auth)
+	session := twitch.NewSession(auth.Twitch, auth.TwitchClientID, auth.TwitchClientSecret)
+	validToken, err := session.CheckToken()
+	if err != nil {
+		log.Printf("Error while validating twitch token. Quitting...")
+		return
+	}
+
+	if !validToken {
+		err = session.GenerateToken()
+		if err != nil {
+			log.Printf("Error while generating new twitch token. Quitting...")
+			return
+		}
+	}
 
 	go waitOnInput(session)
 	<-q // wait on quit
@@ -53,6 +66,12 @@ func executeCommand(session twitch.Session, args []string) {
 			}
 
 			fmt.Printf("User info:\n\tID: %s\n\tDisplay Name: %s\n", user.ID, user.DisplayName)
+		}
+	case "webhooks":
+		err := session.GetWebhooks()
+		if err != nil {
+			log.Printf("Error while fetching webhooks: %s", err)
+			return
 		}
 	}
 }

@@ -11,8 +11,10 @@ import (
 
 // AuthInfo auth info
 type AuthInfo struct {
-	Discord string `json:"discord"`
-	Twitch  string `json:"twitch"`
+	Discord            string `json:"discord"`
+	Twitch             string `json:"twitch"`
+	TwitchClientID     string `json:"twitch-client-id"`
+	TwitchClientSecret string `json:"twitch-client-secret"`
 }
 
 func readAuthFile(filename string) (auth AuthInfo) {
@@ -43,7 +45,7 @@ func main() {
 	twitchQuitSignal := make(chan bool)
 	discordQuitSignal := make(chan bool)
 
-	twitchExit := startTwitchHelper(auth.Twitch, twitchQuitSignal)
+	twitchExit := startTwitchHelper(auth, twitchQuitSignal)
 	discordExit := startDiscordBot(auth.Discord, discordQuitSignal)
 	quitSignal := make(chan os.Signal)
 	signal.Notify(quitSignal, os.Interrupt, os.Kill)

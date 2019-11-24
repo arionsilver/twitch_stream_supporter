@@ -11,8 +11,10 @@ import (
 
 // Session session
 type Session struct {
-	auth   string
-	client http.Client
+	authToken    string
+	clientID     string
+	clientSecret string
+	client       http.Client
 }
 
 // UserInfo user info
@@ -22,22 +24,26 @@ type UserInfo struct {
 }
 
 type dataResult struct {
-	Data []json.RawMessage `json:"data"`
+	Total      int               `json:"total"`
+	Data       []json.RawMessage `json:"data"`
+	Pagination struct {
+		Cursor string `json:"cursor"`
+	} `json:"pagination"`
 }
 
 // NewSession creates session
-func NewSession(auth string) (result Session) {
-	result.auth = auth
-	result.client.Timeout = 2 * time.Second
+func NewSession(auth, clientID, clientSecret string) (result Session) {
+	result.authToken = auth
+	result.clientID = clientID
+	result.clientSecret = clientSecret
+	result.client.Timeout = 10 * time.Second
 
 	return
 }
 
-func (session Session) addBearerAuth(req *http.Request) *http.Request {
+func (session Session) addBearerAuth(req *http.Request) {
 	req.Header = http.Header{}
-	req.Header.Add("Authorization", "Bearer "+session.auth)
-
-	return req
+	req.Header.Add("Authorization", "Bearer "+session.authToken)
 }
 
 // GetUserInfo returns user info
@@ -47,14 +53,14 @@ func (session Session) GetUserInfo(userName string) (result UserInfo, err error)
 		return
 	}
 
-	req = session.addBearerAuth(req)
+	session.addBearerAuth(req)
 	res, err := session.client.Do(req)
 	if err != nil {
 		log.Printf("Error while execute GetUserInfo request: %s", err)
 	}
 
 	if res.StatusCode != 200 {
-		log.Printf("Request returned: %d", res.StatusCode)
+		err = fmt.Errorf("Request returned: %d", res.StatusCode)
 		return
 	}
 
@@ -78,5 +84,44 @@ func (session Session) GetUserInfo(userName string) (result UserInfo, err error)
 	}
 
 	err = fmt.Errorf("User not found")
+	return
+}
+
+// GetWebhooks get all webhooks subscriptions
+func (session Session) GetWebhooks() (err error) {
+	req, err := getWebhooksSubscriptions(nil)
+	if err != nil {
+		return
+	}
+
+	session.addBearerAuth(req)
+	res, err := session.client.Do(req)
+	if err != nil {
+		log.Printf("Error while executing GetWebhooks request: %s", err)
+		return
+	}
+
+	log.Printf("%+v", res)
+
+	if res.StatusCode != 200 {
+		err = fmt.Errorf("Request returned: %d", res.StatusCode)
+		return
+	}
+
+	body, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		log.Printf("Error reading response body: %s", err)
+		return
+	}
+
+	var d dataResult
+	if err = json.Unmarshal(body, &d); err != nil {
+		log.Printf("Error while parsing response body: %s", err)
+		log.Printf("Body: %s", body)
+		return
+	}
+
+	fmt.Printf("%+v\n", d)
+
 	return
 }
