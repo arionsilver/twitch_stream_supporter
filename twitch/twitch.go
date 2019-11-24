@@ -15,6 +15,9 @@ type Session struct {
 	clientID     string
 	clientSecret string
 	client       http.Client
+
+	tokenFile string
+	token     tokenInfo
 }
 
 // UserInfo user info

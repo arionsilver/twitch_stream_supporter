@@ -10,27 +10,27 @@ import (
 	"github.com/arionsilver/twitch_stream_supporter/twitch"
 )
 
-func startTwitchHelper(auth AuthInfo, q chan bool) (c chan bool) {
+func startTwitchHelper(auth AuthInfo, tokenFile string, q chan bool) (c chan bool) {
 	c = make(chan bool)
-	go executeTwitchHelper(auth, c, q)
+	go executeTwitchHelper(auth, tokenFile, c, q)
 
 	return
 }
 
-func executeTwitchHelper(auth AuthInfo, c chan bool, q chan bool) {
+func executeTwitchHelper(auth AuthInfo, tokenFile string, c chan bool, q chan bool) {
 	defer func() { c <- true }()
 
 	session := twitch.NewSession(auth.Twitch, auth.TwitchClientID, auth.TwitchClientSecret)
-	validToken, err := session.CheckToken()
+	validToken, err := session.CheckToken(tokenFile)
 	if err != nil {
-		log.Printf("Error while validating twitch token. Quitting...")
+		log.Printf("Error while validating twitch token. Quitting...\n%s", err)
 		return
 	}
 
 	if !validToken {
 		err = session.GenerateToken()
 		if err != nil {
-			log.Printf("Error while generating new twitch token. Quitting...")
+			log.Printf("Error while generating new twitch token. Quitting...\n%s", err)
 			return
 		}
 	}
