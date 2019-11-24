@@ -69,15 +69,24 @@ func executeCommand(session twitch.Session, args []string) {
 			fmt.Printf("User info:\n\tID: %s\n\tDisplay Name: %s\n", user.ID, user.DisplayName)
 		}
 	case "webhooks":
-		err := session.GetWebhooks()
+		subs, err := session.GetWebhooks()
 		if err != nil {
 			log.Printf("Error while fetching webhooks: %s", err)
 			return
 		}
+
+		for _, sub := range subs {
+			fmt.Printf("Subscription Information: %+v\n", sub)
+		}
 	case "subscribe":
 		if len(args) > 2 {
 			id := args[1]
-			lease, _ := strconv.Atoi(args[2])
+			var lease int
+			if args[2] == "max" {
+				lease = 864000
+			} else {
+				lease, _ = strconv.Atoi(args[2])
+			}
 
 			if err := session.SubscribeStream(id, lease); err != nil {
 				log.Printf("Stream subscription failed: %s", err)

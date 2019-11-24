@@ -32,6 +32,13 @@ type UserInfo struct {
 	DisplayName string `json:"display_name"`
 }
 
+// SubscriptionInfo subscription info
+type SubscriptionInfo struct {
+	Topic    string    `json:"topic"`
+	Callback string    `json:"callback"`
+	Expires  time.Time `json:"expires_at"`
+}
+
 type dataResult struct {
 	Total      int               `json:"total"`
 	Data       []json.RawMessage `json:"data"`
@@ -103,7 +110,7 @@ func (session Session) GetUserInfo(userName string) (result UserInfo, err error)
 }
 
 // GetWebhooks get all webhooks subscriptions
-func (session Session) GetWebhooks() (err error) {
+func (session Session) GetWebhooks() (result []SubscriptionInfo, err error) {
 	req, err := getWebhooksSubscriptions(nil)
 	if err != nil {
 		return
@@ -134,7 +141,16 @@ func (session Session) GetWebhooks() (err error) {
 		return
 	}
 
-	fmt.Printf("%+v\n", d)
+	for _, inner := range d.Data {
+		var sub SubscriptionInfo
+		if err = json.Unmarshal(inner, &sub); err != nil {
+			log.Printf("Error while parsing internal JSON: %s", err)
+			log.Printf("Invalid JSON: %s", inner)
+			err = nil
+			continue
+		}
+		result = append(result, sub)
+	}
 
 	return
 }
