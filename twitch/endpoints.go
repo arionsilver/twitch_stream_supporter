@@ -1,14 +1,17 @@
 package twitch
 
 import (
+	"bytes"
 	"log"
 	"net/http"
 	"net/url"
 )
 
 const baseURL string = "https://api.twitch.tv/helix"
+const streamsEndpoint string = "/streams"
 const usersEndpoint string = "/users"
 const webhooksSubscriptionsEndpoint string = "/webhooks/subscriptions"
+const webhooksHubEndpoint string = "/webhooks/hub"
 
 const baseOAuthURL string = "https://id.twitch.tv/oauth2"
 const generateTokenEndpoint string = "/token"
@@ -43,6 +46,21 @@ func getWebhooksSubscriptions(page *string) (result *http.Request, err error) {
 	result.URL.RawQuery = query.Encode()
 
 	return
+}
+
+func postWebhookSubscription(body []byte) (result *http.Request, err error) {
+	result, err = http.NewRequest("POST", baseURL+webhooksHubEndpoint, bytes.NewReader(body))
+	if err != nil {
+		log.Printf("Error creating postWebhookSubscription request: %s", err)
+	}
+
+	return
+}
+
+func subscribeStreamTopic(userID string) string {
+	query := url.Values{}
+	query.Add("user_id", userID)
+	return baseURL + streamsEndpoint + "?" + query.Encode()
 }
 
 func postAppToken(clientID, clientSecret string) (result *http.Request, err error) {

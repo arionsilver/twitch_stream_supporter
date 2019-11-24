@@ -9,12 +9,18 @@ import (
 	"time"
 )
 
+// Config config
+type Config struct {
+	CallbackServer string `json:"callback_server"`
+}
+
 // Session session
 type Session struct {
 	authToken    string
 	clientID     string
 	clientSecret string
 	client       http.Client
+	config       Config
 
 	tokenFile string
 	token     tokenInfo
@@ -35,11 +41,12 @@ type dataResult struct {
 }
 
 // NewSession creates session
-func NewSession(auth, clientID, clientSecret string) (result Session) {
+func NewSession(auth, clientID, clientSecret string, config Config) (result Session) {
 	result.authToken = auth
 	result.clientID = clientID
 	result.clientSecret = clientSecret
 	result.client.Timeout = 10 * time.Second
+	result.config = config
 
 	return
 }
@@ -47,6 +54,11 @@ func NewSession(auth, clientID, clientSecret string) (result Session) {
 func (session Session) addBearerAuth(req *http.Request) {
 	req.Header = http.Header{}
 	req.Header.Add("Authorization", "Bearer "+session.authToken)
+}
+
+func (session Session) addTokenAuth(req *http.Request) {
+	req.Header = http.Header{}
+	req.Header.Add("Authorization", "Bearer "+session.token.Token)
 }
 
 // GetUserInfo returns user info
@@ -97,14 +109,12 @@ func (session Session) GetWebhooks() (err error) {
 		return
 	}
 
-	session.addBearerAuth(req)
+	session.addTokenAuth(req)
 	res, err := session.client.Do(req)
 	if err != nil {
 		log.Printf("Error while executing GetWebhooks request: %s", err)
 		return
 	}
-
-	log.Printf("%+v", res)
 
 	if res.StatusCode != 200 {
 		err = fmt.Errorf("Request returned: %d", res.StatusCode)
@@ -127,4 +137,47 @@ func (session Session) GetWebhooks() (err error) {
 	fmt.Printf("%+v\n", d)
 
 	return
+}
+
+// SubscribeStream subscribe to stream by user ID
+func (session Session) SubscribeStream(userID string, lease int) (err error) {
+	type HubRequest struct {
+		Callback string `json:"hub.callback"`
+		Mode     string `json:"hub.mode"`
+		Topic    string `json:"hub.topic"`
+		Lease    int    `json:"hub.lease_seconds"`
+	}
+	body := HubRequest{}
+	body.Callback = session.config.CallbackServer
+	body.Mode = "subscribe"
+	body.Topic = subscribeStreamTopic(userID)
+	body.Lease = lease
+
+	bodyJSON, err := json.Marshal(body)
+	if err != nil {
+		log.Printf("Couldn't marshal the request JSON")
+		return
+	}
+
+	req, err := postWebhookSubscription(bodyJSON)
+	if err != nil {
+		return
+	}
+
+	session.addTokenAuth(req)
+	req.Header.Set("Content-Type", "application/json")
+	res, err := session.client.Do(req)
+	if err != nil {
+		log.Printf("Error while executing SubscribeStream request: %s", err)
+		return
+	}
+
+	bodyRes, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		log.Printf("Error while reading SubscribeStream request's body: %s", err)
+		log.Printf("Body: %s", bodyRes)
+		return
+	}
+
+	return nil
 }

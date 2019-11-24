@@ -5,22 +5,23 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/arionsilver/twitch_stream_supporter/twitch"
 )
 
-func startTwitchHelper(auth AuthInfo, tokenFile string, q chan bool) (c chan bool) {
+func startTwitchHelper(auth AuthInfo, tokenFile string, config twitch.Config, q chan bool) (c chan bool) {
 	c = make(chan bool)
-	go executeTwitchHelper(auth, tokenFile, c, q)
+	go executeTwitchHelper(auth, tokenFile, config, c, q)
 
 	return
 }
 
-func executeTwitchHelper(auth AuthInfo, tokenFile string, c chan bool, q chan bool) {
+func executeTwitchHelper(auth AuthInfo, tokenFile string, config twitch.Config, c chan bool, q chan bool) {
 	defer func() { c <- true }()
 
-	session := twitch.NewSession(auth.Twitch, auth.TwitchClientID, auth.TwitchClientSecret)
+	session := twitch.NewSession(auth.Twitch, auth.TwitchClientID, auth.TwitchClientSecret, config)
 	validToken, err := session.CheckToken(tokenFile)
 	if err != nil {
 		log.Printf("Error while validating twitch token. Quitting...\n%s", err)
@@ -72,6 +73,15 @@ func executeCommand(session twitch.Session, args []string) {
 		if err != nil {
 			log.Printf("Error while fetching webhooks: %s", err)
 			return
+		}
+	case "subscribe":
+		if len(args) > 2 {
+			id := args[1]
+			lease, _ := strconv.Atoi(args[2])
+
+			if err := session.SubscribeStream(id, lease); err != nil {
+				log.Printf("Stream subscription failed: %s", err)
+			}
 		}
 	}
 }
