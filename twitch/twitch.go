@@ -166,7 +166,7 @@ func (session Session) SubscribeStream(userID string, lease int) (err error) {
 		Lease    int    `json:"hub.lease_seconds"`
 	}
 	body := HubRequest{}
-	body.Callback = session.config.CallbackServer
+	body.Callback = session.config.CallbackServer + session.config.Port
 	body.Mode = "subscribe"
 	body.Topic = subscribeStreamTopic(userID)
 	body.Lease = lease
