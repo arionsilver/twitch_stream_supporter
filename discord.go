@@ -48,7 +48,7 @@ func (handler rootHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	r.ParseForm()
 	if len(r.Form.Get("hub.challenge")) > 0 {
 		w.Write([]byte(r.Form.Get("hub.challenge")))
-	} else {
+	} else if r.ContentLength > 0 {
 		body, err := ioutil.ReadAll(r.Body)
 		if err != nil {
 			log.Printf("Failed while reading request body: %s", err)
@@ -72,10 +72,12 @@ func (handler rootHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 		for _, channel := range handler.config.Channels {
 			for _, data := range info.Data {
-				content := fmt.Sprintf("%s has started streaming. The title is: %s\nhttp://twitch.tv/%s", data.UserName, data.Title, data.UserName)
+				content := fmt.Sprintf("%s has started streaming.\nStream title: **%s**\nhttp://twitch.tv/%s", data.UserName, data.Title, data.UserName)
 				handler.session.ChannelMessageSend(channel, content)
 			}
 		}
+	} else {
+		log.Printf("Empty request received.\n\tHeaders: %+v\n\tRemote address: %s", r.Header, r.RemoteAddr)
 	}
 }
 
